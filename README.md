@@ -95,11 +95,19 @@ docker compose up app
 
 ### Composer (requires PHP 8.3+, OpenSwoole, ext-zealphp)
 
-```bash
+<!-- ```bash
 # New project
 composer create-project zealphp/project:^0.4.12 my-project
 cd my-project
 php app.php
+# → https://php.zeal.ninja
+``` -->
+
+```bash
+# New project
+zealphp new my-project
+cd my-project
+zealphp start
 # → https://php.zeal.ninja
 ```
 
@@ -228,12 +236,20 @@ Now your WordPress, Drupal, or custom PHP app runs on OpenSwoole — persistent 
 
 Run ZealPHP detached from the terminal:
 
-```bash
+<!-- ```bash
 php app.php start -d        # daemonize
 php app.php restart
 php app.php status
 php app.php logs
 php app.php stop
+``` -->
+
+```bash
+zealphp start -d        # daemonize
+zealphp restart
+zealphp status
+zealphp logs
+zealphp stop
 ```
 
 PID file lives at `/tmp/zealphp/zealphp_{port}.pid` (one per port — multiple

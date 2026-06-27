@@ -1,0 +1,180 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/*
+ |--------------------------------------------------------------------------
+ | ZealPHP CLI
+ |--------------------------------------------------------------------------
+ |
+ | Two responsibilities only:
+ |
+ |  1. zealphp new <name>
+ |     Runs: composer create-project zealphp/zealphp-project <name>
+ |     Lives here because there is no app.php yet to forward to.
+ |
+ |  2. Everything else
+ |     Forwards to: php app.php <args>
+ |     ZealPHP's App::run() handles start/stop/restart/status/logs/--help
+ |
+ */
+
+ function printHeader(): void
+{
+    echo PHP_EOL;
+    echo "\033[36;1m ______          _  ____  _   _ ____  \033[0m" . PHP_EOL;
+    echo "\033[36;1m|__  / ___  __ _| ||  _ \| | | |  _ \ \033[0m" . PHP_EOL;
+    echo "\033[36;1m  / / / _ \/ _\ | || |_) | |_| | |_) |\033[0m" . PHP_EOL;
+    echo "\033[36;1m / /_|  __/ (_| | ||  __/|  _  |  __/ \033[0m" . PHP_EOL;
+    echo "\033[36;1m/____|\___|\__,_|_||_|   |_| |_|_|    \033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "  \033[90mZealPHP\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+
+    echo "\033[1m  Usage:\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp\033[0m \033[33m[command]\033[0m \033[90m[options]\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+
+    echo "\033[1m  Project:\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp new \033[33m<name>\033[0m" . PHP_EOL;
+    echo "    \033[90m  Scaffold a new ZealPHP project\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+
+    echo "\033[1m  Server:\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp start\033[0m" . PHP_EOL;
+    echo "    \033[90m  Start the server on port 8080 (foreground)\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp start \033[90m--dev\033[0m" . PHP_EOL;
+    echo "    \033[90m  Start with route hot-reload enabled\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp start \033[90m-p 9501 -d\033[0m" . PHP_EOL;
+    echo "    \033[90m  Start daemonized on port 9501\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp stop\033[0m" . PHP_EOL;
+    echo "    \033[90m  Stop the server on default port\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp stop \033[90m-p 9501\033[0m" . PHP_EOL;
+    echo "    \033[90m  Stop the server on port 9501\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp restart\033[0m" . PHP_EOL;
+    echo "    \033[90m  Restart the server\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp status\033[0m" . PHP_EOL;
+    echo "    \033[90m  Check if the server is running\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+
+    echo "\033[1m  Logs:\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp logs\033[0m" . PHP_EOL;
+    echo "    \033[90m  Tail all log files in real-time\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[32mzealphp logs \033[90m--access --debug\033[0m" . PHP_EOL;
+    echo "    \033[90m  Tail specific log files\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+
+    echo "  \033[90mRun \033[32mzealphp --help\033[90m for full usage.\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+}
+
+$subCommand = $argv[1] ?? null;
+
+if ($subCommand === null || $subCommand === 'list') {
+    printHeader();
+    exit(0);
+}
+
+// ── zealphp new <name> ────────────────────────────────────────────────────
+if ($subCommand === 'new') {
+    $name = $argv[2] ?? null;
+
+    if ($name === null || $name === '') {
+        fwrite(STDERR, PHP_EOL);
+        fwrite(STDERR, "  \033[31m[ERROR]\033[0m Project name is required." . PHP_EOL);
+        fwrite(STDERR, "  Usage: \033[32mzealphp new <name>\033[0m" . PHP_EOL);
+        fwrite(STDERR, PHP_EOL);
+        exit(1);
+    }
+
+    if (!preg_match('/^[a-zA-Z0-9_\-]+$/', $name)) {
+        fwrite(STDERR, PHP_EOL);
+        fwrite(STDERR, "  \033[31m[ERROR]\033[0m Invalid project name: \"$name\"" . PHP_EOL);
+        fwrite(STDERR, "  Use only letters, numbers, hyphens, and underscores." . PHP_EOL);
+        fwrite(STDERR, PHP_EOL);
+        exit(1);
+    }
+
+    if (is_dir(getcwd() . '/' . $name)) {
+        fwrite(STDERR, PHP_EOL);
+        fwrite(STDERR, "  \033[31m[ERROR]\033[0m Directory already exists: $name" . PHP_EOL);
+        fwrite(STDERR, PHP_EOL);
+        exit(1);
+    }
+
+    echo PHP_EOL;
+    echo "  \033[33m→\033[0m  Creating new ZealPHP project: \033[1m$name\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+
+    // composer create-project zealphp/zealphp-project <name>
+    $cmd = ['composer', 'create-project', 'zealphp/project', $name];
+
+    $process = proc_open($cmd, [STDIN, STDOUT, STDERR], $pipes);
+
+    if (!is_resource($process)) {
+        fwrite(STDERR, "  \033[31m[ERROR]\033[0m Failed to run composer." . PHP_EOL);
+        exit(1);
+    }
+
+    $exitCode = proc_close($process);
+
+    echo PHP_EOL;
+
+    if ($exitCode !== 0) {
+        fwrite(STDERR, "  \033[31m✖\033[0m  Project creation failed." . PHP_EOL);
+        echo PHP_EOL;
+        exit($exitCode);
+    }
+
+    echo "  \033[32m✔\033[0m  Project \033[1m$name\033[0m created successfully!" . PHP_EOL;
+    echo PHP_EOL;
+    echo "  \033[90mNext steps:\033[0m" . PHP_EOL;
+    echo "    \033[32mcd $name\033[0m" . PHP_EOL;
+    echo "    \033[32mzealphp start\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+
+    exit(0);
+}
+
+// ── Everything else → forward to php app.php ─────────────────────────────
+$projectRoot = getcwd();
+$entryPoint  = $projectRoot . '/app.php';
+$fileEntryPoint = 'app.php';
+
+if (!file_exists($entryPoint)) {
+    fwrite(STDERR, PHP_EOL);
+    fwrite(STDERR, "  \033[31m[ERROR]\033[0m app.php not found in: $projectRoot" . PHP_EOL);
+    fwrite(STDERR, "  Run from inside a ZealPHP project, or create one:" . PHP_EOL);
+    fwrite(STDERR, "  \033[32mzealphp new my-app\033[0m" . PHP_EOL);
+    fwrite(STDERR, PHP_EOL);
+    exit(1);
+}
+
+// Drop argv[0] ('zealphp'), keep everything the user typed
+$userArgs = array_slice($argv, 1);
+
+// Replace this process with php app.php — zero overhead, same PID
+if (function_exists('pcntl_exec')) {
+    pcntl_exec(PHP_BINARY, [$fileEntryPoint, ...$userArgs]);
+}
+
+// Fallback when pcntl not available
+$process = proc_open(
+    [PHP_BINARY, $fileEntryPoint, ...$userArgs],
+    [STDIN, STDOUT, STDERR],
+    $pipes
+);
+
+exit(is_resource($process) ? proc_close($process) : 1);

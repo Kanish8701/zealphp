@@ -135,7 +135,7 @@ class CLI
                     if ($pid > 0 && @posix_kill($pid, 0)) {
                         $port = $flags['port'] ?? (App::instance() ? App::instance()->port : 8080);
                         echo "ZealPHP is already running (pid {$pid}, port {$port})\n";
-                        echo "Use 'php app.php stop' to stop, or 'php app.php restart' to restart\n";
+                        echo "Use 'zealphp stop' to stop, or 'zealphp restart' to restart\n";
                         exit(0);
                     }
                     @unlink($pidFile);
@@ -211,7 +211,7 @@ class CLI
         if ($newPid > 0) {
             echo "{$verb} (pid {$newPid}, port {$port}).\n";
         } else {
-            echo "{$verb}, but could not confirm — check `php app.php status`.\n";
+            echo "{$verb}, but could not confirm — check `zealphp status`.\n";
         }
         exit(0);
     }
@@ -526,7 +526,7 @@ class CLI
         foreach ($running as $r) {
             echo "  pid {$r['pid']}, port {$r['port']}\n";
         }
-        echo "Use 'php app.php stop -p PORT' to stop a specific instance\n";
+        echo "Use 'zealphp stop -p PORT' to stop a specific instance\n";
     }
 
     /**
@@ -677,7 +677,7 @@ class CLI
     private static function cliHelp(): void
     {
         echo <<<'HELP'
-Usage: php app.php [command] [options]
+Usage: zealphp [command] [options]
 
 Commands:
   start    Start the server (default)
@@ -705,17 +705,17 @@ Log filters (use with 'logs' command):
   --zlog               Only tail zlog.log
 
 Examples:
-  php app.php                        Start with defaults
-  php app.php --dev                  Start with route hot-reload (dev)
-  php app.php start -p 9501 -d      Start daemonized on port 9501
-  php app.php stop                   Stop the default (port 8080) server
-  php app.php stop -p 9501          Stop the server on port 9501
-  php app.php restart -p 9501       Restart on port 9501
-  php app.php status                 Check if default server is running
-  php app.php status -p 9501        Check server on port 9501
-  php app.php logs                   Tail all log files
-  php app.php logs --access          Tail only access log
-  php app.php logs --access --debug  Tail access + debug logs
+  zealphp                        Start with defaults
+  zealphp --dev                  Start with route hot-reload (dev)
+  zealphp start -p 9501 -d      Start daemonized on port 9501
+  zealphp stop                   Stop the default (port 8080) server
+  zealphp stop -p 9501          Stop the server on port 9501
+  zealphp restart -p 9501       Restart on port 9501
+  zealphp status                 Check if default server is running
+  zealphp status -p 9501        Check server on port 9501
+  zealphp logs                   Tail all log files
+  zealphp logs --access          Tail only access log
+  zealphp logs --access --debug  Tail access + debug logs
 
 PID + log files: /tmp/zealphp/ (one PID file per port). If that dir is owned by
 another user, ZealPHP falls back to a per-user dir automatically. Override the

@@ -40,6 +40,7 @@
         "psr/http-client": "^1.0",
         "league/commonmark": "^2.8"
     },
+    "bin": ["bin/zealphp"],
     "suggest": {
         "ext-zealphp": "Recommended: per-request function overrides + per-coroutine superglobals (pie install zealphp/ext)",
         "ext-uopz": "Legacy fallback if ext-zealphp is not available"
