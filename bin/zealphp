@@ -20,8 +20,7 @@ declare(strict_types=1);
  |
  */
 
- function printHeader(): void
-{
+ function printHeader(): void{
     echo PHP_EOL;
     echo "\033[36;1m ______          _  ____  _   _ ____  \033[0m" . PHP_EOL;
     echo "\033[36;1m|__  / ___  __ _| ||  _ \| | | |  _ \ \033[0m" . PHP_EOL;
@@ -29,8 +28,10 @@ declare(strict_types=1);
     echo "\033[36;1m / /_|  __/ (_| | ||  __/|  _  |  __/ \033[0m" . PHP_EOL;
     echo "\033[36;1m/____|\___|\__,_|_||_|   |_| |_|_|    \033[0m" . PHP_EOL;
     echo PHP_EOL;
-    echo "  \033[90mZealPHP\033[0m" . PHP_EOL;
-    echo PHP_EOL;
+    
+}
+
+function printList(): void{
 
     echo "\033[1m  Usage:\033[0m" . PHP_EOL;
     echo PHP_EOL;
@@ -80,10 +81,52 @@ declare(strict_types=1);
     echo PHP_EOL;
 }
 
+function print_welcome_message(): void{
+    echo PHP_EOL;
+
+    echo "\033[32m========================================================================\033[0m" . PHP_EOL;
+    echo "\033[33mWelcome to ZealPHP - An open-source PHP framework powered by OpenSwoole\033[0m" . PHP_EOL;
+    echo "\033[32m========================================================================\033[0m" . PHP_EOL;
+
+    echo PHP_EOL;
+
+    echo "\033[35m ZealPHP offers a lightweight, high-performance alternative to Next.js,\033[0m" . PHP_EOL;
+    echo "\033[35m leveraging OpenSwoole's asynchronous I/O to perform everything Next.js can and much more.\033[0m" . PHP_EOL;
+    echo "\033[35m Unlock the full potential of PHP with ZealPHP and OpenSwoole's speed and scalability!\033[0m" . PHP_EOL;
+
+    echo PHP_EOL;
+
+    echo "\033[1m  Features:\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "    \033[37m1. Dynamic HTML Streaming with APIs and Sockets\033[0m" . PHP_EOL;
+    echo "    \033[37m2. Parallel Data Fetching and Processing (Use go() to run async coroutine)\033[0m" . PHP_EOL;
+    echo "    \033[37m3. Dynamic Routing Tree with Implicit Routes for Public and API\033[0m" . PHP_EOL;
+    echo "    \033[37m4. Programmable and Injectable Routes for Authentication\033[0m" . PHP_EOL;
+    echo "    \033[37m5. Dynamic and Nested Templating and HTML Rendering\033[0m" . PHP_EOL;
+    echo "    \033[37m6. Workers, Tasks and Processes\033[0m" . PHP_EOL;
+    echo "    \033[37m7. All PHP Superglobals are constructed per request\033[0m" . PHP_EOL;
+
+    echo PHP_EOL;
+    echo "\033[31m For more information, visit: https://php.zeal.ninja\033[0m" . PHP_EOL;
+
+    echo PHP_EOL;
+}
+
 $subCommand = $argv[1] ?? null;
 
-if ($subCommand === null || $subCommand === 'list') {
+// ── zealphp welcome message ────────────────────────────────────────────────────
+
+if ($subCommand === null) {
     printHeader();
+    print_welcome_message();
+    exit(0);
+}
+
+// ── zealphp list ────────────────────────────────────────────────────
+
+if ($subCommand === 'list') {
+    printHeader();
+    printList();
     exit(0);
 }
 

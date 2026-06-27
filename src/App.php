@@ -9124,7 +9124,7 @@ class App
             // reporting "already running" when the original daemon is gone.
             if ($existingPid > 0 && @posix_kill($existingPid, 0) && \ZealPHP\CLI::processIsZealphp($existingPid)) {
                 echo "ZealPHP is already running (pid {$existingPid}, port {$this->port})\n";
-                echo "Use 'php app.php stop' to stop, or 'php app.php restart' to restart\n";
+                echo "Use 'zealphp stop' to stop, or 'zealphp restart' to restart\n";
                 exit(0);
             }
             @unlink($pidFile);
