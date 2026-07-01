@@ -3,21 +3,126 @@
 
 declare(strict_types=1);
 
-/*
- |--------------------------------------------------------------------------
- | ZealPHP CLI
- |--------------------------------------------------------------------------
- |
- | Two responsibilities only:
- |
- |  1. zealphp new <name>
- |     Runs: composer create-project zealphp/zealphp-project <name>
- |     Lives here because there is no app.php yet to forward to.
- |
- |  2. Everything else
- |     Forwards to: php app.php <args>
- |     ZealPHP's App::run() handles start/stop/restart/status/logs/--help
- |
+
+$subCommand = $argv[1] ?? null;
+
+// ── Valid command whitelist ───────────────────────────────────────────────
+// Check before executing anything. If unknown command → show error + list.
+const VALID_COMMANDS = [
+    // handled by this script
+    'new',
+    // forwarded to php app.php (ZealPHP handles these)
+    'start',
+    'stop',
+    'restart',
+    'status',
+    'logs',
+    'list',
+    // global flags
+    '--help',
+    '-h',
+    '--version',
+    '-V',
+];
+
+if ($subCommand !== null && !in_array($subCommand, VALID_COMMANDS, true)) {
+    echo PHP_EOL;
+    echo "\033[31m[ERROR]\033[0m Unknown command: \033[1m$subCommand\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+    echo "Available commands:" . PHP_EOL;
+    foreach (VALID_COMMANDS as $cmd) {
+        if (!str_starts_with($cmd, '-')) {
+            echo "    \033[32mzealphp $cmd\033[0m" . PHP_EOL;
+        }
+    }
+    echo PHP_EOL;
+    echo "Run \033[32mzealphp\033[0m to see full usage." . PHP_EOL;
+    echo PHP_EOL;
+    exit(1);
+}
+
+// ── Helper functions ──────────────────────────────────────────────────────
+
+/**
+ * Read and decode the USER's project composer.json.
+ * Uses getcwd() — the directory the user is standing in.
+ *
+ * Returns null when:
+ *   - composer.json not found (user is not inside a project)
+ *   - JSON is malformed / unreadable
+ */
+
+function getComposerData(): ?array
+{
+    $projectRoot  = getcwd();
+    $composerFile = $projectRoot . '/composer.json';
+
+    if (!file_exists($composerFile)) {
+        fwrite(STDERR, PHP_EOL);
+        fwrite(STDERR, "  \033[31m[ERROR]\033[0m Composer not found in: $projectRoot" . PHP_EOL);
+        fwrite(STDERR, "  Run from inside a ZealPHP project, or create one:" . PHP_EOL);
+        fwrite(STDERR, "  \033[32mzealphp new my-app\033[0m" . PHP_EOL);
+        fwrite(STDERR, PHP_EOL);
+        exit(1);
+    }
+
+    $json = file_get_contents($composerFile);
+    $data = json_decode($json, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return null;  // malformed JSON — don't crash
+    }
+
+    return $data;
+}
+
+/**
+ * Read the ZealPHP version from the user's composer.json.
+ * Looks under "require" → "zealphp/zealphp".
+ *
+ * Example composer.json:
+ *   "require": { "zealphp/zealphp": "^0.4.12" }
+ */
+
+function getVersion(): string{
+    $data = getComposerData();
+    if($data && !empty($data["require"]["zealphp/zealphp"])){
+        return $data["require"]["zealphp/zealphp"];
+    }
+    else
+        return 'Version is not maintained in Composer.json File';
+}
+
+/**
+ * Read the entry point from the user's composer.json.
+ * Looks under "server" → "entry-point".
+ *
+ * Example composer.json:
+ *   "serve": {
+ *           "entry-point": "server.php"
+ *   }
+ */
+
+function getEntryPoint(): String{
+       $data = getComposerData();
+        if($data && !empty($data["serve"]["entry-point"]) ){
+            return $data["serve"]["entry-point"];
+        }
+        else{
+            fwrite(STDERR, PHP_EOL);
+            fwrite(STDERR, "  \033[31m[ERROR]\033[0m Entry Point is missing or empty in Composer.json File" . PHP_EOL);
+            fwrite(STDERR, PHP_EOL);
+            fwrite(STDERR, "  Fix by adding to your composer.json:" . PHP_EOL);
+            fwrite(STDERR, "    \033[90m    \"serve\": {\033[0m" . PHP_EOL);
+            fwrite(STDERR, "    \033[90m        \"entry-point\":  \"app.php\" " . PHP_EOL);
+            fwrite(STDERR, "    \033[90m    }\033[0m" . PHP_EOL);
+            fwrite(STDERR, PHP_EOL);
+            exit(1);
+        }
+}
+
+/**
+ * Print the ZealPHP ASCII header.
  */
 
  function printHeader(): void{
@@ -30,6 +135,10 @@ declare(strict_types=1);
     echo PHP_EOL;
     
 }
+
+/**
+ * Print the styled command list.
+ */
 
 function printList(): void{
 
@@ -81,6 +190,10 @@ function printList(): void{
     echo PHP_EOL;
 }
 
+/**
+ * Print the welcome message shown when zealphp is run with no args.
+ */
+
 function print_welcome_message(): void{
     echo PHP_EOL;
 
@@ -112,7 +225,6 @@ function print_welcome_message(): void{
     echo PHP_EOL;
 }
 
-$subCommand = $argv[1] ?? null;
 
 // ── zealphp welcome message ────────────────────────────────────────────────────
 
@@ -127,6 +239,13 @@ if ($subCommand === null) {
 if ($subCommand === 'list') {
     printHeader();
     printList();
+    exit(0);
+}
+
+// ── zealphp Version ────────────────────────────────────────────────────
+
+if($subCommand === '-V' || $subCommand === '--version'){
+    echo "ZealPHP Version :" . getVersion() . PHP_EOL;
     exit(0);
 }
 
@@ -191,14 +310,14 @@ if ($subCommand === 'new') {
     exit(0);
 }
 
-// ── Everything else → forward to php app.php ─────────────────────────────
+// ── start, stop, restart, status, logs → forward to entry point ──────────
 $projectRoot = getcwd();
-$entryPoint  = $projectRoot . '/app.php';
-$fileEntryPoint = 'app.php';
+$entryPoint = getEntryPoint();
+$fileEntryPoint  = $projectRoot . '/' . $entryPoint;
 
-if (!file_exists($entryPoint)) {
+if (!file_exists($fileEntryPoint)) {
     fwrite(STDERR, PHP_EOL);
-    fwrite(STDERR, "  \033[31m[ERROR]\033[0m app.php not found in: $projectRoot" . PHP_EOL);
+    fwrite(STDERR, "  \033[31m[ERROR]\033[0m $entryPoint not found in: $projectRoot" . PHP_EOL);
     fwrite(STDERR, "  Run from inside a ZealPHP project, or create one:" . PHP_EOL);
     fwrite(STDERR, "  \033[32mzealphp new my-app\033[0m" . PHP_EOL);
     fwrite(STDERR, PHP_EOL);
