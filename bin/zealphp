@@ -11,6 +11,7 @@ $subCommand = $argv[1] ?? null;
 const VALID_COMMANDS = [
     // handled by this script
     'new',
+    'upgrade',
     // forwarded to php app.php (ZealPHP handles these)
     'start',
     'stop',
@@ -60,7 +61,7 @@ function getComposerData(): ?array
     if (!file_exists($composerFile)) {
         fwrite(STDERR, PHP_EOL);
         fwrite(STDERR, "  \033[31m[ERROR]\033[0m Composer not found in: $projectRoot" . PHP_EOL);
-        fwrite(STDERR, "  Run from inside a ZealPHP project, or create one:" . PHP_EOL);
+        fwrite(STDERR, "  Run this command from within a ZealPHP project directory, or create one:" . PHP_EOL);
         fwrite(STDERR, "  \033[32mzealphp new my-app\033[0m" . PHP_EOL);
         fwrite(STDERR, PHP_EOL);
         exit(1);
@@ -119,6 +120,152 @@ function getEntryPoint(): String{
             fwrite(STDERR, PHP_EOL);
             exit(1);
         }
+}
+
+/**
+ * Read the actually INSTALLED version of zealphp/zealphp from
+ * vendor/composer/installed.json (the source of truth after `composer install`).
+ */
+function getInstalledVersion(): ?string
+{
+
+    $projectRoot  = getcwd();
+    $installedFile = $projectRoot . '/vendor/composer/installed.json';;
+
+    if (!file_exists($installedFile)) {
+        fwrite(STDERR, PHP_EOL);
+        fwrite(STDERR, "  \033[31m[ERROR]\033[0m ZealPHP project not found: $projectRoot" . PHP_EOL);
+        fwrite(STDERR, "  Run this command from within a ZealPHP project directory." . PHP_EOL);
+        fwrite(STDERR, PHP_EOL);
+        exit(1);
+    }
+   
+
+    $json = file_get_contents($installedFile);
+    $data = json_decode($json, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return null;
+    }
+
+    // Composer 2.x nests packages under "packages"; older installed.json is a flat list.
+    $packages = $data['packages'] ?? $data;
+
+    if (!is_array($packages)) {
+        return null;
+    }
+
+    foreach ($packages as $package) {
+        if (($package['name'] ?? '') === 'zealphp/zealphp') {
+            return ltrim((string) ($package['version'] ?? ''), 'v') ?: null;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Fetch a URL's body. Prefers curl, falls back to file_get_contents.
+ * Returns null on any failure — never throws, never crashes the CLI.
+ */
+function fetchUrl(string $url): ?string
+{
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_USERAGENT      => 'zealphp-cli',
+            CURLOPT_FOLLOWLOCATION => true,
+        ]);
+        $body = curl_exec($ch);
+        $ok   = $body !== false && curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200;
+        curl_close($ch);
+
+        return $ok ? $body : null;
+    }
+
+    if (ini_get('allow_url_fopen')) {
+        $context = stream_context_create([
+            'http' => ['timeout' => 10, 'header' => "User-Agent: zealphp-cli\r\n"],
+        ]);
+        $body = @file_get_contents($url, false, $context);
+
+        return $body !== false ? $body : null;
+    }
+
+    return null;
+}
+
+/**
+ * Fetch the latest stable version of a package from Packagist.
+ * Skips dev branches and pre-release tags (alpha/beta/RC).
+ */
+function fetchLatestVersion(string $package): ?string
+{
+    $body = fetchUrl("https://repo.packagist.org/p2/{$package}.json");
+
+    if ($body === null) {
+        return null;
+    }
+
+    $data = json_decode($body, true);
+
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return null;
+    }
+
+    $entries = $data['packages'][$package] ?? [];
+    $stable  = [];
+
+    foreach ($entries as $entry) {
+        $version = ltrim((string) ($entry['version'] ?? ''), 'v');
+
+        if ($version === '' || str_starts_with($version, 'dev-') || str_ends_with($version, '-dev')) {
+            continue; // dev branches
+        }
+        if (preg_match('/-(alpha|beta|rc)/i', $version)) {
+            continue; // pre-releases
+        }
+
+        $stable[] = $version;
+    }
+
+    if (empty($stable)) {
+        return null;
+    }
+
+    usort($stable, fn($a, $b) => version_compare($b, $a));
+
+    return $stable[0];
+}
+
+/**
+ * Check whether a string looks like a real semantic version,
+ * e.g. 1.2.3, 0.4.12, 2.0.0-beta1. Rejects garbage like "banana" or "9999".
+ */
+function isValidVersion(string $version): bool
+{
+    return (bool) preg_match('/^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/', $version);
+}
+
+/**
+ * Prompt the user with a yes/no question. Defaults to "No" on empty input.
+ */
+function confirm(string $message): bool
+{
+    echo $message . ' [Yes/No]: ';
+
+    $handle = fopen('php://stdin', 'r');
+    $line   = $handle ? fgets($handle) : false;
+
+    if ($handle) {
+        fclose($handle);
+    }
+
+    $answer = strtolower(trim((string) $line));
+
+    return $answer === 'y' || $answer === 'yes';
 }
 
 /**
@@ -305,6 +452,110 @@ if ($subCommand === 'new') {
     echo "  \033[90mNext steps:\033[0m" . PHP_EOL;
     echo "    \033[32mcd $name\033[0m" . PHP_EOL;
     echo "    \033[32mzealphp start\033[0m" . PHP_EOL;
+    echo PHP_EOL;
+
+    exit(0);
+}
+
+// ── zealphp upgrade [version] ─────────────────────────────────────────────
+if ($subCommand === 'upgrade') {
+    $requestedVersion = $argv[2] ?? null;
+    $installedVersion = getInstalledVersion();  // null if not installed yet
+
+    echo PHP_EOL;
+
+    if ($requestedVersion !== null) {
+        // ── Version passed → check upgrade vs downgrade, confirm ──────────
+        $targetVersion = ltrim($requestedVersion, 'v');
+
+        if (!isValidVersion($targetVersion)) {
+            fwrite(STDERR, "  \033[31m[ERROR]\033[0m \"$requestedVersion\" doesn't look like a valid version." . PHP_EOL);
+            fwrite(STDERR, "  Expected a format like \033[33m1.2.3\033[0m or \033[33m0.4.12\033[0m." . PHP_EOL);
+            echo PHP_EOL;
+            exit(1);
+        }
+
+        if ($installedVersion !== null) {
+            $cmp = version_compare($targetVersion, $installedVersion);
+
+            if ($cmp === 0) {
+                echo "  Installed version:  \033[90m$installedVersion\033[0m" . PHP_EOL;
+                echo "  Requested version:   \033[90m$targetVersion\033[0m" . PHP_EOL;
+                echo PHP_EOL;
+                $proceed = confirm("  \033[33m?\033[0m  This is already the installed version. Reinstall it anyway?");
+            } elseif ($cmp > 0) {
+                echo "  \033[33m→\033[0m  This will \033[1mupgrade\033[0m zealphp/zealphp:" . PHP_EOL;
+                echo "      \033[90m$installedVersion\033[0m  →  \033[32m$targetVersion\033[0m" . PHP_EOL;
+                echo PHP_EOL;
+                $proceed = confirm('  Proceed with the upgrade?');
+            } else {
+                echo "  \033[33m⚠\033[0m  This will \033[1mdowngrade\033[0m zealphp/zealphp:" . PHP_EOL;
+                echo "      \033[90m$installedVersion\033[0m  →  \033[31m$targetVersion\033[0m" . PHP_EOL;
+                echo PHP_EOL;
+                $proceed = confirm('  Proceed with the downgrade?');
+            }
+        } else {
+            echo "  \033[33m→\033[0m  Installing zealphp/zealphp: \033[1m$targetVersion\033[0m" . PHP_EOL;
+            echo PHP_EOL;
+            $proceed = confirm('  Proceed?');
+        }
+    } else {
+        // ── No version passed → look up latest, confirm ────────────────────
+        echo "  \033[33m→\033[0m  Checking latest ZealPHP version..." . PHP_EOL;
+        echo PHP_EOL;
+
+        $targetVersion = fetchLatestVersion('zealphp/zealphp');
+
+        if ($targetVersion === null) {
+            fwrite(STDERR, "  \033[31m[ERROR]\033[0m Could not reach Packagist to check for updates." . PHP_EOL);
+            fwrite(STDERR, "  Check your internet connection and try again." . PHP_EOL);
+            echo PHP_EOL;
+            exit(1);
+        }
+
+        echo "  Installed:  \033[90m" . ($installedVersion ?? 'none') . "\033[0m" . PHP_EOL;
+        echo "  Latest:     \033[32m$targetVersion\033[0m" . PHP_EOL;
+        echo PHP_EOL;
+
+        if ($installedVersion !== null && version_compare($installedVersion, $targetVersion, '>=')) {
+            echo "  \033[32m✔\033[0m  ZealPHP is already up to date." . PHP_EOL;
+            echo PHP_EOL;
+            exit(0);
+        }
+
+        $proceed = confirm('  Update to the latest version?');
+    }
+
+    echo PHP_EOL;
+
+    if (!$proceed) {
+        echo "  Aborted. No changes were made." . PHP_EOL;
+        echo PHP_EOL;
+        exit(0);
+    }
+
+    // ── Run composer require ───────────────────────────────────────────────
+    echo "  \033[33m→\033[0m  Updating the zealphp : $targetVersion\033[0m..." . PHP_EOL;
+    echo PHP_EOL;
+
+    $cmd     = ['composer', 'require', "zealphp/zealphp:$targetVersion"];
+    $process = proc_open($cmd, [STDIN, STDOUT, STDERR], $pipes);
+
+    if (!is_resource($process)) {
+        fwrite(STDERR, "  \033[31m[ERROR]\033[0m Failed to run composer." . PHP_EOL);
+        exit(1);
+    }
+
+    $exitCode = proc_close($process);
+    echo PHP_EOL;
+
+    if ($exitCode !== 0) {
+        fwrite(STDERR, "  \033[31m✖\033[0m  composer require failed." . PHP_EOL);
+        echo PHP_EOL;
+        exit($exitCode);
+    }
+
+    echo "  \033[32m✔\033[0m  ZealPHP is now on \033[1m$targetVersion\033[0m." . PHP_EOL;
     echo PHP_EOL;
 
     exit(0);
