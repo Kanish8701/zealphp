@@ -284,6 +284,57 @@ function confirm(string $message): bool
 }
 
 /**
+ * Print the Color ZealPHP ASCII header.
+ */
+function printColorHeader(): void
+{
+      // "Zeal" in white, "PHP" in orange — matching the official logo
+    // Each letter is 5 chars wide + 1 space gap
+    // Z     E     A     L     P     H     P
+    $lines = [
+        '█████ █████  ███  █     ████  █   █ ████  ',
+        '   █  █     █   █ █     █   █ █   █ █   █ ',
+        '  █   ████  █████ █     ████  █████ ████  ',
+        ' █    █     █   █ █     █     █   █ █     ',
+        '█████ █████ █   █ █████ █     █   █ █     ',
+    ];
+
+    // Column positions where "PHP" starts (after Z E A L + spaces)
+    // Z=6, E=6, A=6, L=6 → "ZEAL" = 24 chars, then PHP starts at col 24
+    $phpStart = 24;
+
+    echo PHP_EOL;
+
+    foreach ($lines as $line) {
+        $len    = mb_strlen($line);
+        $output = '';
+
+        for ($i = 0; $i < $len; $i++) {
+            $char = mb_substr($line, $i, 1);
+
+            if ($i < $phpStart) {
+                // "ZEAL" → white (matches logo)
+                $output .= "\033[97;1m{$char}\033[0m";
+            } else {
+                // "PHP" → orange/amber (matches logo #E8A020)
+                // ANSI 256 color 214 = orange, closest to brand color
+                $output .= "\033[38;5;214;1m{$char}\033[0m";
+            }
+        }
+
+        echo $output . PHP_EOL;
+    }
+
+    echo PHP_EOL;
+
+    // Tagline: "Zeal" white, "PHP" orange, lightning bolt red
+    echo "  \033[97;1mZeal\033[0m\033[38;5;214;1mPHP\033[0m" .
+         "  \033[38;5;202m⚡\033[0m" .
+         "  \033[90mv" . getVersion() . " — The Async PHP Runtime for AI Web Apps\033[0m" . PHP_EOL;
+}
+
+
+/**
  * Print the styled command list.
  */
 
@@ -376,7 +427,7 @@ function print_welcome_message(): void{
 // ── zealphp welcome message ────────────────────────────────────────────────────
 
 if ($subCommand === null) {
-    printHeader();
+    printColorHeader();
     print_welcome_message();
     exit(0);
 }
