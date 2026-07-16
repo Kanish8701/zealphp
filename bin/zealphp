@@ -328,9 +328,21 @@ function printColorHeader(): void
     echo PHP_EOL;
 
     // Tagline: "Zeal" white, "PHP" orange, lightning bolt red
-    echo "  \033[97;1mZeal\033[0m\033[38;5;214;1mPHP\033[0m" .
-         "  \033[38;5;202m⚡\033[0m" .
-         "  \033[90mv" . getVersion() . " — The Async PHP Runtime for AI Web Apps\033[0m" . PHP_EOL;
+    $projectRoot  = getcwd();
+    $composerFile = $projectRoot . '/composer.json';
+    //without version 
+    if (!file_exists($composerFile)) {
+        echo "  \033[97;1mZeal\033[0m\033[38;5;214;1mPHP\033[0m" .
+             "  \033[38;5;202m⚡\033[0m" .
+             "  \033[90m" . " — The Async PHP Runtime for AI Web Apps\033[0m" . PHP_EOL;
+   
+    
+    } else{
+        //version data from composer.json file
+        echo "  \033[97;1mZeal\033[0m\033[38;5;214;1mPHP\033[0m" .
+             "  \033[38;5;202m⚡\033[0m" .
+             "  \033[90mv" . getVersion() . " — The Async PHP Runtime for AI Web Apps\033[0m" . PHP_EOL;
+    }    
 }
 
 
@@ -425,6 +437,8 @@ function print_welcome_message(): void{
 }
 
 
+
+
 // ── zealphp welcome message ────────────────────────────────────────────────────
 
 if ($subCommand === null) {
@@ -438,6 +452,13 @@ if ($subCommand === null) {
 if ($subCommand === 'list') {
     printColorHeader();
     printList();
+    exit(0);
+}
+
+// ── zealphp env ────────────────────────────────────────────────────
+
+if ($subCommand === 'env') {
+    runEnv();
     exit(0);
 }
 
