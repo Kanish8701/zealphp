@@ -53,7 +53,7 @@ if ($subCommand !== null && !in_array($subCommand, VALID_COMMANDS, true)) {
  *   - JSON is malformed / unreadable
  */
 
-function getComposerData(): ?array
+function getComposerData(): array
 {
     $projectRoot  = getcwd();
     $composerFile = $projectRoot . '/composer.json';
@@ -104,19 +104,20 @@ function getVersion(): string{
  *   }
  */
 
-function getEntryPoint(): String{
+function getEntryPoint(): string{
        $data = getComposerData();
         if($data && !empty($data["serve"]["entry-point"]) ){
             return $data["serve"]["entry-point"];
         }
         else{
             fwrite(STDERR, PHP_EOL);
-            fwrite(STDERR, "  \033[31m[ERROR]\033[0m Entry Point is missing or empty in Composer.json File" . PHP_EOL);
+            fwrite(STDERR, "  \033[31m[ERROR]\033[0m Entry point is missing in composer.json" . PHP_EOL);
             fwrite(STDERR, PHP_EOL);
             fwrite(STDERR, "  Fix by adding to your composer.json:" . PHP_EOL);
-            fwrite(STDERR, "    \033[90m    \"serve\": {\033[0m" . PHP_EOL);
-            fwrite(STDERR, "    \033[90m        \"entry-point\":  \"app.php\" " . PHP_EOL);
-            fwrite(STDERR, "    \033[90m    }\033[0m" . PHP_EOL);
+            fwrite(STDERR, PHP_EOL);
+            fwrite(STDERR, "    \033[90m\"serve\": {\033[0m" . PHP_EOL);
+            fwrite(STDERR, "    \033[90m    \"entry-point\": \"app.php\"\033[0m" . PHP_EOL);
+            fwrite(STDERR, "    \033[90m}\033[0m" . PHP_EOL);
             fwrite(STDERR, PHP_EOL);
             exit(1);
         }
@@ -130,7 +131,7 @@ function getInstalledVersion(): ?string
 {
 
     $projectRoot  = getcwd();
-    $installedFile = $projectRoot . '/vendor/composer/installed.json';;
+    $installedFile = $projectRoot . '/vendor/composer/installed.json';
 
     if (!file_exists($installedFile)) {
         fwrite(STDERR, PHP_EOL);
@@ -500,7 +501,7 @@ if ($subCommand === 'new') {
     echo "  \033[33m→\033[0m  Creating new ZealPHP project: \033[1m$name\033[0m" . PHP_EOL;
     echo PHP_EOL;
 
-    // composer create-project zealphp/zealphp-project <name>
+    // composer create-project zealphp/project <name>
     $cmd = ['composer', 'create-project', 'zealphp/project', $name];
 
     $process = proc_open($cmd, [STDIN, STDOUT, STDERR], $pipes);
