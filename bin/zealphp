@@ -24,6 +24,11 @@ const VALID_COMMANDS = [
     '-h',
     '--version',
     '-V',
+    //Component
+    'make:component',
+    //Key
+    'key:generate'
+
 ];
 
 if ($subCommand !== null && !in_array($subCommand, VALID_COMMANDS, true)) {
